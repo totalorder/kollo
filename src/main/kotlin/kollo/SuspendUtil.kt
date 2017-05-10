@@ -10,9 +10,9 @@ import java.util.concurrent.CompletionStage
 import kotlin.coroutines.experimental.Continuation
 import kotlin.coroutines.experimental.suspendCoroutine
 
-suspend fun <T> await(future: CompletionStage<T>): T {
+suspend fun <T> CompletionStage<T>.await(): T {
     return suspendCoroutine { cont: Continuation<T> ->
-        future.whenComplete { result, exception ->
+        whenComplete { result, exception ->
             if (exception == null) {
                 cont.resume(result)
             } else {
@@ -22,24 +22,18 @@ suspend fun <T> await(future: CompletionStage<T>): T {
     }
 }
 
-fun <T> asFuture(handler: suspend () -> T): CompletionStage<T> {
-    val responseFuture = CompletableFuture<T>()
-    launch(CommonPool) {
-        val response = handler.invoke()
-        responseFuture.complete(response)
-
-    }
-    return responseFuture
-}
-
 object SuspendRoute {
-    fun <T> async(method: String, uri: String, handler: suspend (context: RequestContext) -> T): Route<AsyncHandler<T>> {
+    fun <T> async(
+            method: String, uri: String, handler: suspend (context: RequestContext) -> T): Route<AsyncHandler<T>> {
         return Route.async(method, uri, { context: RequestContext ->
             val responseFuture = CompletableFuture<T>()
             launch(CommonPool) {
-                val response = handler.invoke(context)
-                responseFuture.complete(response)
-
+                try {
+                    val response = handler.invoke(context)
+                    responseFuture.complete(response)
+                } catch (t: Throwable) {
+                    responseFuture.completeExceptionally(t)
+                }
             }
             responseFuture
         })
