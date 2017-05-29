@@ -1,8 +1,8 @@
 package kollo
 import com.spotify.apollo.Environment
+
 import com.spotify.apollo.RequestContext
 import com.spotify.apollo.Response
-import com.spotify.apollo.core.Service
 import com.spotify.apollo.httpservice.HttpService
 import com.spotify.apollo.route.Route
 import java.util.concurrent.CompletableFuture
@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 
 object App {
-    val scheduledExecutor = Executors.newScheduledThreadPool(10)!!
+    private val scheduledExecutor = Executors.newScheduledThreadPool(10)!!
 
     @JvmStatic fun main(args: Array<String>) {
         HttpService.boot(this::init, "kollo", args)
@@ -20,8 +20,9 @@ object App {
 
     private fun init(environment: Environment) {
         environment.routingEngine()
-                .registerAutoRoute(Route.async("GET", "/regular", { rc -> regularHandler(rc) }))
-                .registerAutoRoute(SuspendRoute.async("GET", "/suspended", { rc -> suspendHandler(rc) }))
+                .registerAutoRoute(Route.async("GET", "/java", JavaHandler::javaHandler))
+                .registerAutoRoute(Route.async("GET", "/regular", this::regularHandler))
+                .registerAutoRoute(SuspendRoute.async("GET", "/suspend", { rq -> suspendHandler(rq) }))
     }
 
     suspend fun suspendHandler(requestContext: RequestContext): Response<String> {
