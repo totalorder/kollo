@@ -7,23 +7,16 @@ import com.spotify.apollo.httpservice.HttpService
 import com.spotify.apollo.route.Route
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
-import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 
 object App {
-    val scheduledExecutorFuture = CompletableFuture<ScheduledExecutorService>()
+    val scheduledExecutor = Executors.newScheduledThreadPool(10)!!
 
     @JvmStatic fun main(args: Array<String>) {
-        val service = HttpService.usingAppInit(this::init, "kollo").build()
-
-        HttpService.boot(
-                service,
-                { instance: Service.Instance ->
-                    scheduledExecutorFuture.complete(instance.scheduledExecutorService) },
-                args)
+        HttpService.boot(this::init, "kollo", args)
     }
-
 
     private fun init(environment: Environment) {
         environment.routingEngine()
@@ -46,7 +39,7 @@ object App {
 
     fun sleep(millis: Long): CompletionStage<Long> {
         val future = CompletableFuture<Long>()
-        scheduledExecutorFuture.get().schedule({ future.complete(millis) }, millis, TimeUnit.MILLISECONDS)
+        scheduledExecutor.schedule({ future.complete(millis) }, millis, TimeUnit.MILLISECONDS)
         return future
     }
 }
